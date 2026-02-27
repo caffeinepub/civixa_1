@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Shield, Database, MapPin, Users, Wrench, ScrollText,
-  Plus, Trash2, ChevronRight, UserCheck, LayoutDashboard, Pencil
+  Plus, Trash2, ChevronRight, LayoutDashboard, Pencil, ChevronDown, UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,13 +44,13 @@ import { Badge } from '@/components/ui/badge';
 import { NavBar } from '../components/NavBar';
 import { useData } from '../context/DataContext';
 import { useSession } from '../context/SessionContext';
-import { getUsers, setUsers } from '../lib/storage';
+import { getUsers, setUsers, addAuditLog, generateId } from '../lib/storage';
 import { toast } from 'sonner';
 import type { CivixaUser } from '../types/civixa';
 
 export function Admin() {
   const navigate = useNavigate();
-  const { locations, services, reports, auditLogs, addLocation, editLocation, deleteLocation, addService, deleteService } = useData();
+  const { locations, services, reports, auditLogs, addLocation, editLocation, deleteLocation, addService, deleteService, updateServiceStatus } = useData();
   const { session } = useSession();
 
   // Dialogs
@@ -67,9 +67,35 @@ export function Admin() {
   const [filterLocId, setFilterLocId] = useState('all');
 
   const [deleteSvcId, setDeleteSvcId] = useState<string | null>(null);
+  const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({});
+  const toggleLocExpand = (locId: string) =>
+    setExpandedLocs((prev) => ({ ...prev, [locId]: !prev[locId] }));
 
-  const [promoteUserId, setPromoteUserId] = useState<string | null>(null);
-  const [promoteLocId, setPromoteLocId] = useState('');
+  // Remove User
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+
+  const handleDeleteUser = () => {
+    if (!deleteUserId) return;
+    const user = getUsers().find((u) => u.userId === deleteUserId);
+    setUsers(getUsers().filter((u) => u.userId !== deleteUserId));
+    addAuditLog({
+      action: `User removed: ${user?.name ?? deleteUserId} (${user?.email ?? ''})`,
+      performedBy: session?.userId ?? 'admin',
+      performedByName: session?.name ?? 'Admin',
+      locationId: '',
+    });
+    refreshUsers();
+    toast.success(`User "${user?.name}" removed`);
+    setDeleteUserId(null);
+  };
+
+  // Add User
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'moderator'>('moderator');
+  const [newUserLocId, setNewUserLocId] = useState('');
 
   const [users, setUsersState] = useState<CivixaUser[]>(() => getUsers());
   const refreshUsers = () => setUsersState(getUsers());
@@ -123,21 +149,38 @@ export function Admin() {
     setDeleteSvcId(null);
   };
 
-  const handlePromote = () => {
-    if (!promoteUserId || !promoteLocId) return;
-    const allUsers = getUsers();
-    const idx = allUsers.findIndex((u) => u.userId === promoteUserId);
-    if (idx < 0) return;
-    allUsers[idx] = {
-      ...allUsers[idx],
-      isModerator: true,
-      assignedLocationId: promoteLocId,
+  const handleAddUser = () => {
+    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return;
+    if (newUserRole === 'moderator' && !newUserLocId) return;
+
+    const newUser: CivixaUser = {
+      userId: generateId(),
+      name: newUserName.trim(),
+      email: newUserEmail.trim(),
+      isAdmin: newUserRole === 'admin',
+      isModerator: newUserRole === 'moderator',
+      ...(newUserRole === 'moderator' ? { assignedLocationId: newUserLocId } : {}),
+      mustChangePassword: false,
+      token: generateId(),
     };
-    setUsers(allUsers);
+
+    setUsers([...getUsers(), newUser]);
+
+    addAuditLog({
+      action: `User added: ${newUser.name} (${newUser.email}) as ${newUserRole}`,
+      performedBy: session?.userId ?? 'admin',
+      performedByName: session?.name ?? 'Admin',
+      locationId: newUserRole === 'moderator' ? newUserLocId : '',
+    });
+
     refreshUsers();
-    toast.success('User promoted to moderator');
-    setPromoteUserId(null);
-    setPromoteLocId('');
+    toast.success(`User "${newUser.name}" added as ${newUserRole}`);
+    setAddUserOpen(false);
+    setNewUserName('');
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserRole('moderator');
+    setNewUserLocId('');
   };
 
   // Stats
@@ -147,8 +190,6 @@ export function Admin() {
     { label: 'Users', value: users.length, icon: Users, color: 'text-purple-400' },
     { label: 'Reports', value: reports.length, icon: ScrollText, color: 'text-amber-400' },
   ];
-
-  const promoteUser = users.find((u) => u.userId === promoteUserId);
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(var(--background))' }}>
@@ -300,77 +341,117 @@ export function Admin() {
           {/* Services */}
           <TabsContent value="services">
             <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-sm font-semibold">Services</h2>
-                <Select value={filterLocId} onValueChange={setFilterLocId}>
-                  <SelectTrigger className="h-8 w-40 text-xs">
-                    <SelectValue placeholder="All locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All locations</SelectItem>
-                    {locations.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <h2 className="text-sm font-semibold">Services by Location</h2>
               <Button size="sm" onClick={() => setAddSvcOpen(true)} className="gap-1.5"
                 style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}>
                 <Plus className="w-4 h-4" />Add Service
               </Button>
             </div>
 
-            <div className="glass-card-solid overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10">
-                    <TableHead className="text-xs">Service</TableHead>
-                    <TableHead className="text-xs">Location</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs">Impact</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredServices.map((svc) => {
-                    const loc = locations.find((l) => l.id === svc.locationId);
-                    return (
-                      <TableRow key={svc.id} className="border-white/5">
-                        <TableCell className="font-medium text-sm">{svc.serviceName}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{loc?.name ?? svc.locationId}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              svc.status === 'Operational' ? 'status-operational' :
-                              svc.status === 'Warning' ? 'status-warning' : 'status-interrupted'
-                            }`}
-                          >
-                            {svc.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-40 truncate">{svc.impact}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeleteSvcId(svc.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="space-y-3">
+              {locations.map((loc) => {
+                const locServices = services.filter((s) => s.locationId === loc.id);
+                const isExpanded = expandedLocs[loc.id] !== false; // default open
+                return (
+                  <div key={loc.id} className="glass-card-solid overflow-hidden">
+                    {/* Location header — clickable toggle */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/5 transition-colors"
+                      onClick={() => toggleLocExpand(loc.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" style={{ color: 'oklch(0.72 0.16 195)' }} />
+                        <span className="text-sm font-semibold">{loc.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({locServices.length} service{locServices.length !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      <ChevronDown
+                        className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {/* Services list */}
+                    {isExpanded && (
+                      <div className="border-t border-white/10">
+                        {locServices.length === 0 ? (
+                          <p className="text-xs text-muted-foreground px-4 py-3">No services in this location.</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-white/10">
+                                <TableHead className="text-xs pl-4">Service</TableHead>
+                                <TableHead className="text-xs">Impact</TableHead>
+                                <TableHead className="text-xs">Status</TableHead>
+                                <TableHead className="text-xs w-8" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {locServices.map((svc) => (
+                                <TableRow key={svc.id} className="border-white/5">
+                                  <TableCell className="font-medium text-sm pl-4">{svc.serviceName}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground max-w-40 truncate">{svc.impact}</TableCell>
+                                  <TableCell>
+                                    <Select
+                                      value={svc.status}
+                                      onValueChange={(val) =>
+                                        updateServiceStatus(svc.id, val as 'Operational' | 'Warning' | 'Interrupted')
+                                      }
+                                    >
+                                      <SelectTrigger
+                                        className={`h-7 w-36 text-xs border font-medium ${
+                                          svc.status === 'Operational'
+                                            ? 'status-operational'
+                                            : svc.status === 'Warning'
+                                            ? 'status-warning'
+                                            : 'status-interrupted'
+                                        }`}
+                                      >
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Operational">Operational</SelectItem>
+                                        <SelectItem value="Warning">Warning</SelectItem>
+                                        <SelectItem value="Interrupted">Interrupted</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell className="text-right pr-3">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => setDeleteSvcId(svc.id)}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {locations.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No locations yet. Add one in the Locations tab.</p>
+              )}
             </div>
           </TabsContent>
 
           {/* Users */}
           <TabsContent value="users">
-            <h2 className="text-sm font-semibold mb-4">All Users ({users.length})</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-semibold">All Users ({users.length})</h2>
+              <Button size="sm" onClick={() => setAddUserOpen(true)} className="gap-1.5"
+                style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}>
+                <UserPlus className="w-4 h-4" />Add User
+              </Button>
+            </div>
             <div className="glass-card-solid overflow-hidden">
               <Table>
                 <TableHeader>
@@ -400,19 +481,18 @@ export function Admin() {
                             <Badge variant="outline" className="text-xs text-muted-foreground">User</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                         <TableCell className="text-sm text-muted-foreground">
                           {assignedLoc?.name ?? '—'}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!user.isAdmin && !user.isModerator && (
+                          {!user.isAdmin && (
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="gap-1.5 text-xs border-white/15 hover:bg-white/5"
-                              onClick={() => setPromoteUserId(user.userId)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteUserId(user.userId)}
                             >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              Promote
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           )}
                         </TableCell>
@@ -555,35 +635,76 @@ export function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* Promote User Dialog */}
-      <Dialog open={!!promoteUserId} onOpenChange={(v) => !v && setPromoteUserId(null)}>
+      {/* Add User Dialog */}
+      <Dialog open={addUserOpen} onOpenChange={(v) => { setAddUserOpen(v); if (!v) { setNewUserName(''); setNewUserEmail(''); setNewUserPassword(''); setNewUserRole('moderator'); setNewUserLocId(''); } }}>
         <DialogContent className="glass-card-solid border-white/15 max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base">Promote to Moderator</DialogTitle>
+            <DialogTitle className="text-base">Add User</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            <p className="text-sm text-muted-foreground">
-              Promote <strong className="text-foreground">{promoteUser?.name}</strong> to moderator and assign a location.
-            </p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Assign Location</Label>
-              <Select value={promoteLocId} onValueChange={setPromoteLocId}>
+              <Label className="text-xs">Name</Label>
+              <Input
+                placeholder="Full name"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input
+                type="email"
+                placeholder="user@example.com"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Password</Label>
+              <Input
+                type="text"
+                placeholder="Set a password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Select value={newUserRole} onValueChange={(v) => { setNewUserRole(v as 'admin' | 'moderator'); setNewUserLocId(''); }}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select location…" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                  ))}
+                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="moderator">Moderator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {newUserRole === 'moderator' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Assigned Location</Label>
+                <Select value={newUserLocId} onValueChange={setNewUserLocId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select location…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter className="mt-4">
-            <Button variant="ghost" size="sm" onClick={() => setPromoteUserId(null)}>Cancel</Button>
-            <Button size="sm" onClick={handlePromote} disabled={!promoteLocId}
-              style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}>
-              Promote
+            <Button variant="ghost" size="sm" onClick={() => setAddUserOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={handleAddUser}
+              disabled={!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim() || (newUserRole === 'moderator' && !newUserLocId)}
+              style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}
+            >
+              Add User
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -605,6 +726,27 @@ export function Admin() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete User Confirm */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(v) => !v && setDeleteUserId(null)}>
+        <AlertDialogContent className="glass-card-solid border-white/15">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this user. They will no longer be able to log in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

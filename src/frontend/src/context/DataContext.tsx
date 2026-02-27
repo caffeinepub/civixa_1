@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { CivixaLocation, CivixaService, CivixaReport, CivixaAuditLog } from '../types/civixa';
 import {
   getLocations, setLocations,
@@ -22,6 +22,7 @@ interface DataContextValue {
   deleteLocation: (id: string) => void;
   addService: (locationId: string, name: string, impact: string) => void;
   deleteService: (id: string) => void;
+  updateServiceStatus: (serviceId: string, status: CivixaService['status']) => void;
   submitReport: (data: Omit<CivixaReport, 'id' | 'status' | 'createdAt'>) => void;
   approveReport: (reportId: string) => void;
   rejectReport: (reportId: string) => void;
@@ -42,6 +43,44 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setServicesState(getServices());
     setReportsState(getReports());
     setAuditLogsState(getAuditLogs());
+  }, []);
+
+  // Auto-reset non-Operational services to Operational after 1 hour
+  useEffect(() => {
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+
+    const check = () => {
+      const svcs = getServices();
+      const now = Date.now();
+      let changed = false;
+
+      const updated = svcs.map((svc) => {
+        if (svc.status === 'Operational') return svc;
+        const age = now - new Date(svc.lastUpdated).getTime();
+        if (age >= ONE_HOUR_MS) {
+          changed = true;
+          addAuditLog({
+            action: `Service auto-reset: ${svc.serviceName} → Operational (1-hour timeout)`,
+            performedBy: 'system',
+            performedByName: 'System',
+            locationId: svc.locationId,
+          });
+          return { ...svc, status: 'Operational' as const, lastUpdated: new Date().toISOString() };
+        }
+        return svc;
+      });
+
+      if (changed) {
+        setServices(updated);
+        setServicesState([...updated]);
+        setAuditLogsState(getAuditLogs());
+      }
+    };
+
+    // Run immediately on mount, then every 60 seconds
+    check();
+    const interval = setInterval(check, 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const addLocation = useCallback((name: string) => {
@@ -136,6 +175,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setServicesState(svcs);
   }, []);
 
+  const updateServiceStatus = useCallback((serviceId: string, status: CivixaService['status']) => {
+    const svcs = getServices();
+    const idx = svcs.findIndex((s) => s.id === serviceId);
+    if (idx < 0) return;
+    const svcName = svcs[idx].serviceName;
+    const locationId = svcs[idx].locationId;
+    svcs[idx] = { ...svcs[idx], status, lastUpdated: new Date().toISOString() };
+    setServices(svcs);
+    setServicesState([...svcs]);
+
+    addAuditLog({
+      action: `Service status changed: ${svcName} → ${status}`,
+      performedBy: session?.userId ?? 'system',
+      performedByName: session?.name ?? 'System',
+      locationId,
+    });
+    setAuditLogsState(getAuditLogs());
+  }, [session]);
+
   const submitReport = useCallback((data: Omit<CivixaReport, 'id' | 'status' | 'createdAt'>) => {
     const reps = getReports();
     const newReport: CivixaReport = {
@@ -206,7 +264,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider value={{
       locations, services, reports, auditLogs, refresh,
       addLocation, editLocation, deleteLocation,
-      addService, deleteService,
+      addService, deleteService, updateServiceStatus,
       submitReport, approveReport, rejectReport,
     }}>
       {children}

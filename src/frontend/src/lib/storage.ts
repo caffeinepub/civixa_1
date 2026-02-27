@@ -141,7 +141,7 @@ export function seedIfEmpty(): void {
       serviceId: 'svc-2',
       area: 'Adyar',
       description: 'Power has been flickering for the past 2 hours. Several appliances damaged.',
-      contactEmail: 'user@civixa.local',
+      contactEmail: 'mod@civixa.local',
       status: 'pending',
       createdAt: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
     },
@@ -151,7 +151,7 @@ export function seedIfEmpty(): void {
       serviceId: 'svc-3',
       area: 'T. Nagar',
       description: 'Large pothole on main road causing accidents. No signage or barriers.',
-      contactEmail: 'user@civixa.local',
+      contactEmail: 'mod@civixa.local',
       status: 'pending',
       createdAt: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
     },
@@ -171,7 +171,6 @@ export function seedIfEmpty(): void {
   const users: CivixaUser[] = [
     { userId: 'admin-1', name: 'System Admin', email: 'admin@civixa.local', isAdmin: true, isModerator: false, mustChangePassword: true, token: 'admin-token' },
     { userId: 'mod-1', name: 'Chennai Mod', email: 'mod@civixa.local', isAdmin: false, isModerator: true, assignedLocationId: 'loc-1', mustChangePassword: false, token: 'mod-token' },
-    { userId: 'user-1', name: 'Public User', email: 'user@civixa.local', isAdmin: false, isModerator: false, mustChangePassword: false, token: 'user-token' },
   ];
   setUsers(users);
 
