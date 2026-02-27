@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, MapPin, Activity, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, MapPin, Activity, CheckCircle2, Building2, Wifi } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { NavBar } from '../components/NavBar';
 import { ServiceCard } from '../components/ServiceCard';
+import { GroupServiceCard } from '../components/GroupServiceCard';
 import { BackgroundLayout } from '../components/BackgroundLayout';
 import { useData } from '../context/DataContext';
 
@@ -23,6 +24,24 @@ export function Home() {
 
   const selectedLocation = locations.find((l) => l.id === selectedLocationId);
   const locationServices = services.filter((s) => s.locationId === selectedLocationId);
+
+  // Bank keywords to group all bank services into a single card
+  const BANK_KEYWORDS = ['SBI', 'HDFC', 'ICICI', 'Axis Bank', 'Punjab National', 'Kotak', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'IndusInd'];
+  // Top-5 ISP keywords in display order
+  const TOP_ISP_KEYWORDS = ['BSNL', 'Jio Fiber', 'Airtel', 'ACT', 'Hathway'];
+
+  const bankServices = locationServices.filter((s) =>
+    BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw))
+  );
+
+  // Build ISP list ordered by TOP_ISP_KEYWORDS
+  const ispServices = TOP_ISP_KEYWORDS
+    .map((kw) => locationServices.find((s) => s.serviceName.startsWith('Internet –') && s.serviceName.includes(kw)))
+    .filter((s): s is NonNullable<typeof s> => s !== undefined);
+
+  const otherServices = locationServices.filter(
+    (s) => !BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw)) && !s.serviceName.startsWith('Internet –')
+  );
 
   const operationalCount = locationServices.filter((s) => s.status === 'Operational').length;
   const warningCount = locationServices.filter((s) => s.status === 'Warning').length;
@@ -142,9 +161,25 @@ export function Home() {
         {selectedLocation ? (
           locationServices.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 stagger-children">
-              {locationServices.map((svc, i) => (
+              {otherServices.map((svc, i) => (
                 <ServiceCard key={svc.id} service={svc} index={i} />
               ))}
+              {bankServices.length > 0 && (
+                <GroupServiceCard
+                  label="Bank Branch Operations"
+                  icon={<Building2 className="w-5 h-5" />}
+                  services={bankServices}
+                  index={otherServices.length}
+                />
+              )}
+              {ispServices.length > 0 && (
+                <GroupServiceCard
+                  label="Internet Services"
+                  icon={<Wifi className="w-5 h-5" />}
+                  services={ispServices}
+                  index={otherServices.length + (bankServices.length > 0 ? 1 : 0)}
+                />
+              )}
             </div>
           ) : (
             <EmptyState message="No services configured for this location." />

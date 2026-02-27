@@ -7,7 +7,11 @@ export const KEYS = {
   USERS: 'civixaUsers',
   AUDIT_LOGS: 'civixaAuditLogs',
   LAST_REPORT_TIME: 'civixaLastReportTime',
+  SEED_VERSION: 'civixaSeedVersion',
 } as const;
+
+// Increment this whenever the seed data changes to force a re-seed for existing users
+const CURRENT_SEED_VERSION = 2;
 
 import type {
   CivixaLocation,
@@ -107,8 +111,14 @@ export function addAuditLog(log: Omit<CivixaAuditLog, 'id' | 'createdAt'>): void
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 export function seedIfEmpty(): void {
-  // Only seed if no locations exist
-  if (getLocations().length > 0) return;
+  // Re-seed if no locations exist OR if seed version is outdated
+  const storedVersion = parseInt(localStorage.getItem(KEYS.SEED_VERSION) ?? '0', 10);
+  if (getLocations().length > 0 && storedVersion >= CURRENT_SEED_VERSION) return;
+
+  // Clear existing data to apply the new seed cleanly
+  localStorage.removeItem(KEYS.LOCATIONS);
+  localStorage.removeItem(KEYS.SERVICES);
+  localStorage.removeItem(KEYS.REPORTS);
 
   const locations: CivixaLocation[] = [
     { id: 'loc-1', name: 'Chennai', slug: 'civixa_chennai', createdAt: '2024-01-01' },
@@ -117,23 +127,58 @@ export function seedIfEmpty(): void {
   ];
   setLocations(locations);
 
-  const services: CivixaService[] = [
-    // Chennai
-    { id: 'svc-1', locationId: 'loc-1', serviceName: 'Water Supply', status: 'Operational', impact: 'Residential & Commercial', lastUpdated: new Date().toISOString() },
-    { id: 'svc-2', locationId: 'loc-1', serviceName: 'Electricity', status: 'Warning', impact: 'Partial outages in Zone 4', lastUpdated: new Date().toISOString() },
-    { id: 'svc-3', locationId: 'loc-1', serviceName: 'Road Maintenance', status: 'Interrupted', impact: 'Anna Salai repairs blocking traffic', lastUpdated: new Date().toISOString() },
-    { id: 'svc-4', locationId: 'loc-1', serviceName: 'Internet', status: 'Operational', impact: 'All ISPs functional', lastUpdated: new Date().toISOString() },
-    // Coimbatore
-    { id: 'svc-5', locationId: 'loc-2', serviceName: 'Water Supply', status: 'Operational', impact: 'Normal distribution', lastUpdated: new Date().toISOString() },
-    { id: 'svc-6', locationId: 'loc-2', serviceName: 'Electricity', status: 'Operational', impact: 'All feeders stable', lastUpdated: new Date().toISOString() },
-    { id: 'svc-7', locationId: 'loc-2', serviceName: 'Waste Management', status: 'Warning', impact: 'Collection delays in east zone', lastUpdated: new Date().toISOString() },
-    // Madurai
-    { id: 'svc-8', locationId: 'loc-3', serviceName: 'Water Supply', status: 'Interrupted', impact: 'Main pipeline repair underway', lastUpdated: new Date().toISOString() },
-    { id: 'svc-9', locationId: 'loc-3', serviceName: 'Road Maintenance', status: 'Operational', impact: 'All major roads accessible', lastUpdated: new Date().toISOString() },
+  const now = new Date().toISOString();
+
+  // Core services shared across all locations
+  const coreServiceTemplates: Array<{ name: string; impact: string }> = [
+    { name: 'Electricity Supply', impact: 'Residential & Commercial power distribution' },
+    { name: 'Government Offices', impact: 'Municipal, district and state offices' },
+    { name: 'Water Supply', impact: 'Drinking water & sewage systems' },
+    { name: 'Traffic Signals', impact: 'All major junctions and crossroads' },
+    { name: 'Roads', impact: 'City roads, highways and flyovers' },
+    // Banks
+    { name: 'State Bank of India (SBI)', impact: 'Branch & ATM operations' },
+    { name: 'HDFC Bank', impact: 'Branch & ATM operations' },
+    { name: 'ICICI Bank', impact: 'Branch & ATM operations' },
+    { name: 'Axis Bank', impact: 'Branch & ATM operations' },
+    { name: 'Punjab National Bank (PNB)', impact: 'Branch & ATM operations' },
+    { name: 'Kotak Mahindra Bank', impact: 'Branch & ATM operations' },
+    { name: 'Bank of Baroda', impact: 'Branch & ATM operations' },
+    { name: 'Canara Bank', impact: 'Branch & ATM operations' },
+    { name: 'Union Bank of India', impact: 'Branch & ATM operations' },
+    { name: 'IndusInd Bank', impact: 'Branch & ATM operations' },
+    // ISPs
+    { name: 'Internet – BSNL', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – Jio Fiber', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – Airtel', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – ACT Fibernet', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – Hathway', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – SITI Networks', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – Excitel', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – YOU Broadband', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – TATA Play Fiber', impact: 'Broadband & fiber connectivity' },
+    { name: 'Internet – Spectra', impact: 'Broadband & fiber connectivity' },
   ];
+
+  const services: CivixaService[] = [];
+  let svcCounter = 1;
+
+  for (const loc of locations) {
+    for (const tmpl of coreServiceTemplates) {
+      services.push({
+        id: `svc-${svcCounter++}`,
+        locationId: loc.id,
+        serviceName: tmpl.name,
+        status: 'Operational',
+        impact: tmpl.impact,
+        lastUpdated: now,
+      });
+    }
+  }
+
   setServices(services);
 
-  const now = new Date();
+  const seedNow = new Date();
   const reports: CivixaReport[] = [
     {
       id: 'rep-1',
@@ -143,27 +188,27 @@ export function seedIfEmpty(): void {
       description: 'Power has been flickering for the past 2 hours. Several appliances damaged.',
       contactEmail: 'mod@civixa.local',
       status: 'pending',
-      createdAt: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+      createdAt: new Date(seedNow.getTime() - 15 * 60 * 1000).toISOString(),
     },
     {
       id: 'rep-2',
       locationId: 'loc-1',
-      serviceId: 'svc-3',
+      serviceId: 'svc-5',
       area: 'T. Nagar',
       description: 'Large pothole on main road causing accidents. No signage or barriers.',
       contactEmail: 'mod@civixa.local',
       status: 'pending',
-      createdAt: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
+      createdAt: new Date(seedNow.getTime() - 45 * 60 * 1000).toISOString(),
     },
     {
       id: 'rep-3',
       locationId: 'loc-1',
-      serviceId: 'svc-2',
+      serviceId: 'svc-1',
       area: 'Velachery',
       description: 'Complete power outage since morning. No response from local TNEB office.',
       contactEmail: 'resident@example.com',
       status: 'approved',
-      createdAt: new Date(now.getTime() - 25 * 60 * 1000).toISOString(),
+      createdAt: new Date(seedNow.getTime() - 25 * 60 * 1000).toISOString(),
     },
   ];
   setReports(reports);
@@ -175,8 +220,9 @@ export function seedIfEmpty(): void {
   setUsers(users);
 
   const auditLogs: CivixaAuditLog[] = [
-    { id: 'log-1', action: 'Report approved: Electricity outage in Velachery', performedBy: 'mod-1', performedByName: 'Chennai Mod', locationId: 'loc-1', createdAt: new Date(now.getTime() - 10 * 60 * 1000).toISOString() },
-    { id: 'log-2', action: 'Service status updated: Electricity → Warning', performedBy: 'mod-1', performedByName: 'Chennai Mod', locationId: 'loc-1', createdAt: new Date(now.getTime() - 9 * 60 * 1000).toISOString() },
+    { id: 'log-1', action: 'Report approved: Electricity outage in Velachery', performedBy: 'mod-1', performedByName: 'Chennai Mod', locationId: 'loc-1', createdAt: new Date(seedNow.getTime() - 10 * 60 * 1000).toISOString() },
+    { id: 'log-2', action: 'Service status updated: Electricity Supply → Warning', performedBy: 'mod-1', performedByName: 'Chennai Mod', locationId: 'loc-1', createdAt: new Date(seedNow.getTime() - 9 * 60 * 1000).toISOString() },
   ];
   setAuditLogs(auditLogs);
+  localStorage.setItem(KEYS.SEED_VERSION, String(CURRENT_SEED_VERSION));
 }
