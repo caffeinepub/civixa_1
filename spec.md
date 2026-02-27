@@ -1,34 +1,28 @@
 # CIVIXA
 
 ## Current State
-The public Home dashboard shows every service as an individual card in a grid -- including all 10 banks and all 10 ISPs as separate flat cards. This creates a very long list and buries important summary information.
+The app uses a `BackgroundLayout` component that applies a `.bg-hero` CSS class — a static dark gradient overlaid on a fallback JPEG image (`background-fallback.dim_1920x1080.jpg`). A `.scan-line` pseudo-element overlay adds a subtle scanline effect.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A grouped "Bank Branch Operations" card on the Home dashboard that shows an overall/aggregate status and expands via a dropdown to reveal each of the 10 banks individually.
-- A grouped "Internet" card on the Home dashboard that shows an overall/aggregate status and expands via a dropdown to reveal the **top 5 ISPs** (BSNL, Jio Fiber, Airtel, ACT Fibernet, Hathway) individually with their statuses.
+- A looping, muted, autoplay HTML5 `<video>` element as the full-page background layer inside `BackgroundLayout`.
+- A semi-transparent dark overlay (same navy tint as the current gradient) placed over the video so existing glass UI remains readable.
+- A civic/urban infrastructure themed ambient video (generated or embedded as a data-URI fallback placeholder; since we can't fetch external video at build time, use a CSS animated gradient as the video "fallback" that mimics motion).
 
 ### Modify
-- Home page service grid: replace the 10 individual bank service cards with one grouped `BankGroupCard`, and replace all 10 ISP cards with one grouped `InternetGroupCard`.
-- The aggregate/overall status of each group card is the worst status among its members (Interrupted > Warning > Operational).
-- The dropdown list inside each group card shows each member's name and its individual StatusBadge.
+- `BackgroundLayout.tsx`: replace the static `.bg-hero` div with a positioned `<video>` element (autoPlay, loop, muted, playsInline) plus an overlay div, keeping the `.scan-line` effect on the wrapper.
+- `index.css`: keep `.bg-hero` as fallback for when video fails/is unsupported; add `.video-bg` and `.video-overlay` utility classes.
 
 ### Remove
-- Individual flat service cards for each bank and each ISP on the public Home page (they remain in admin panel unchanged).
+- Nothing removed — static background kept as CSS fallback.
 
 ## Implementation Plan
-1. Create a `GroupServiceCard` component that accepts a group label, an icon, a list of `CivixaService` items, and renders:
-   - Header row: group icon, group name, aggregate StatusBadge
-   - Collapsible dropdown list: each service name + its individual StatusBadge
-2. In `Home.tsx`, separate `locationServices` into:
-   - `bankServices` = services whose name matches known bank names
-   - `ispServices` = top 5 ISP services (BSNL, Jio Fiber, Airtel, ACT Fibernet, Hathway)
-   - `otherServices` = everything else
-3. Render `otherServices` as flat `ServiceCard`s, then one `GroupServiceCard` for banks (all 10) and one for internet (top 5 ISPs).
+1. Update `BackgroundLayout.tsx` to include a `<video>` tag pointing to a hosted ambient city/infrastructure video URL (use a free public CDN video), with the dark overlay preserved.
+2. Add `.video-bg` and `.video-overlay` CSS classes in `index.css`.
+3. Keep the scanline effect on the outer wrapper.
 
 ## UX Notes
-- Dropdown toggle should be a chevron icon button.
-- Aggregate status badge is shown collapsed; individual statuses are visible when expanded.
-- Expanded state defaults to collapsed (closed) to keep dashboard clean.
-- Group card visual style matches existing `glass-card` aesthetic.
+- Video must be `autoPlay muted loop playsInline` to work on mobile.
+- The overlay opacity should be high enough (~0.75–0.85) that glass cards remain clearly readable.
+- Video should not affect scroll behavior — use `position: fixed` or `absolute` with `z-index: -1`.

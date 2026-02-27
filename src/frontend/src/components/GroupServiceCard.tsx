@@ -73,12 +73,19 @@ export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServ
 
       {/* Expanded list */}
       {expanded && (
-        <div className="mt-4 border-t border-white/8 pt-3 space-y-2">
+        <div className="mt-4 border-t border-white/8 pt-3 space-y-3">
           {services.map((svc) => (
-            <div key={svc.id} className="flex items-center justify-between gap-2">
-              <span className={`text-xs font-medium leading-tight ${rowStatusColor(svc.status)}`}>
-                {svc.serviceName}
-              </span>
+            <div key={svc.id} className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className={`text-xs font-medium leading-tight ${rowStatusColor(svc.status)}`}>
+                  {svc.serviceName}
+                </span>
+                {svc.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+                    {svc.description}
+                  </p>
+                )}
+              </div>
               <StatusBadge status={svc.status} size="sm" />
             </div>
           ))}

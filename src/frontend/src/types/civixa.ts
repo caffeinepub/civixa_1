@@ -17,6 +17,7 @@ export interface CivixaService {
   serviceName: string;
   status: ServiceStatus;
   impact: string;
+  description?: string;
   lastUpdated: string;
 }
 

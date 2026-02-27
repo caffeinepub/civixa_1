@@ -58,6 +58,12 @@ export function ServiceCard({ service, index = 0 }: ServiceCardProps) {
         <StatusBadge status={service.status} size="sm" />
       </div>
 
+      {service.description && (
+        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2 px-0.5">
+          {service.description}
+        </p>
+      )}
+
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t border-white/5">
         <Clock className="w-3 h-3 shrink-0" />
         <span className="font-mono">{formatRelativeTime(service.lastUpdated)}</span>

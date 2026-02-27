@@ -22,7 +22,7 @@ interface DataContextValue {
   deleteLocation: (id: string) => void;
   addService: (locationId: string, name: string, impact: string) => void;
   deleteService: (id: string) => void;
-  updateServiceStatus: (serviceId: string, status: CivixaService['status']) => void;
+  updateServiceStatus: (serviceId: string, status: CivixaService['status'], description?: string) => void;
   submitReport: (data: Omit<CivixaReport, 'id' | 'status' | 'createdAt'>) => void;
   approveReport: (reportId: string) => void;
   rejectReport: (reportId: string) => void;
@@ -175,18 +175,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setServicesState(svcs);
   }, []);
 
-  const updateServiceStatus = useCallback((serviceId: string, status: CivixaService['status']) => {
+  const updateServiceStatus = useCallback((serviceId: string, status: CivixaService['status'], description?: string) => {
     const svcs = getServices();
     const idx = svcs.findIndex((s) => s.id === serviceId);
     if (idx < 0) return;
     const svcName = svcs[idx].serviceName;
     const locationId = svcs[idx].locationId;
-    svcs[idx] = { ...svcs[idx], status, lastUpdated: new Date().toISOString() };
+    svcs[idx] = {
+      ...svcs[idx],
+      status,
+      lastUpdated: new Date().toISOString(),
+      ...(description !== undefined ? { description } : {}),
+    };
     setServices(svcs);
     setServicesState([...svcs]);
 
+    const descNote = description ? ` — ${description}` : '';
     addAuditLog({
-      action: `Service status changed: ${svcName} → ${status}`,
+      action: `Service status changed: ${svcName} → ${status}${descNote}`,
       performedBy: session?.userId ?? 'system',
       performedByName: session?.name ?? 'System',
       locationId,

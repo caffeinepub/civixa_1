@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Shield, Database, MapPin, Users, Wrench, ScrollText,
-  Plus, Trash2, ChevronRight, LayoutDashboard, Pencil, ChevronDown, UserPlus
+  Plus, Trash2, ChevronRight, LayoutDashboard, Pencil, ChevronDown, UserPlus, FileEdit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -70,6 +71,30 @@ export function Admin() {
   const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({});
   const toggleLocExpand = (locId: string) =>
     setExpandedLocs((prev) => ({ ...prev, [locId]: !prev[locId] }));
+
+  // Status change with description dialog
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{
+    svcId: string;
+    svcName: string;
+    newStatus: 'Operational' | 'Warning' | 'Interrupted';
+    description: string;
+  } | null>(null);
+
+  const handleStatusSelect = (svc: { id: string; serviceName: string; description?: string }, newStatus: 'Operational' | 'Warning' | 'Interrupted') => {
+    setStatusChangeDialog({
+      svcId: svc.id,
+      svcName: svc.serviceName,
+      newStatus,
+      description: svc.description ?? '',
+    });
+  };
+
+  const confirmStatusChange = () => {
+    if (!statusChangeDialog) return;
+    updateServiceStatus(statusChangeDialog.svcId, statusChangeDialog.newStatus, statusChangeDialog.description);
+    toast.success(`${statusChangeDialog.svcName} → ${statusChangeDialog.newStatus}`);
+    setStatusChangeDialog(null);
+  };
 
   // Remove User
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -390,13 +415,18 @@ export function Admin() {
                             <TableBody>
                               {locServices.map((svc) => (
                                 <TableRow key={svc.id} className="border-white/5">
-                                  <TableCell className="font-medium text-sm pl-4">{svc.serviceName}</TableCell>
+                                  <TableCell className="pl-4">
+                                    <p className="font-medium text-sm">{svc.serviceName}</p>
+                                    {svc.description && (
+                                      <p className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate">{svc.description}</p>
+                                    )}
+                                  </TableCell>
                                   <TableCell className="text-xs text-muted-foreground max-w-40 truncate">{svc.impact}</TableCell>
                                   <TableCell>
                                     <Select
                                       value={svc.status}
                                       onValueChange={(val) =>
-                                        updateServiceStatus(svc.id, val as 'Operational' | 'Warning' | 'Interrupted')
+                                        handleStatusSelect(svc, val as 'Operational' | 'Warning' | 'Interrupted')
                                       }
                                     >
                                       <SelectTrigger
@@ -772,6 +802,66 @@ export function Admin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Status Change with Description Dialog */}
+      <Dialog open={!!statusChangeDialog} onOpenChange={(v) => !v && setStatusChangeDialog(null)}>
+        <DialogContent className="glass-card-solid border-white/15 max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <FileEdit className="w-4 h-4" style={{ color: 'oklch(0.72 0.16 195)' }} />
+              <DialogTitle className="text-base">Change Service Status</DialogTitle>
+            </div>
+          </DialogHeader>
+          {statusChangeDialog && (
+            <div className="space-y-4 mt-2">
+              <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: 'oklch(0.18 0.03 245)', border: '1px solid oklch(0.3 0.05 245)' }}>
+                <p className="text-xs text-muted-foreground mb-0.5">Service</p>
+                <p className="font-medium">{statusChangeDialog.svcName}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ background: 'oklch(0.18 0.03 245)', border: '1px solid oklch(0.3 0.05 245)' }}>
+                  <p className="text-xs text-muted-foreground mb-0.5">New Status</p>
+                  <span className={`text-xs font-semibold ${
+                    statusChangeDialog.newStatus === 'Operational' ? 'text-emerald-400'
+                    : statusChangeDialog.newStatus === 'Warning' ? 'text-amber-400'
+                    : 'text-red-400'
+                  }`}>
+                    {statusChangeDialog.newStatus}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description <span className="text-muted-foreground">(optional)</span></Label>
+                <Textarea
+                  placeholder="Describe the current situation, affected areas, estimated resolution…"
+                  value={statusChangeDialog.description}
+                  onChange={(e) => setStatusChangeDialog({ ...statusChangeDialog, description: e.target.value })}
+                  className="text-sm resize-none"
+                  rows={3}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" size="sm" onClick={() => setStatusChangeDialog(null)}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={confirmStatusChange}
+              style={{
+                background: statusChangeDialog?.newStatus === 'Operational'
+                  ? 'oklch(0.55 0.15 155)'
+                  : statusChangeDialog?.newStatus === 'Warning'
+                  ? 'oklch(0.6 0.18 75)'
+                  : 'oklch(0.55 0.2 25)',
+                color: 'white'
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
