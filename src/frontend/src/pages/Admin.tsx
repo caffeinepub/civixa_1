@@ -64,7 +64,7 @@ export function Admin() {
   const [svcLocId, setSvcLocId] = useState('');
   const [svcName, setSvcName] = useState('');
   const [svcImpact, setSvcImpact] = useState('');
-  const [filterLocId, setFilterLocId] = useState('');
+  const [filterLocId, setFilterLocId] = useState('all');
 
   const [deleteSvcId, setDeleteSvcId] = useState<string | null>(null);
 
@@ -103,7 +103,7 @@ export function Admin() {
     setEditLocName('');
   };
 
-  const filteredServices = filterLocId
+  const filteredServices = filterLocId && filterLocId !== 'all'
     ? services.filter((s) => s.locationId === filterLocId)
     : services;
 
@@ -307,7 +307,7 @@ export function Admin() {
                     <SelectValue placeholder="All locations" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All locations</SelectItem>
+                    <SelectItem value="all">All locations</SelectItem>
                     {locations.map((l) => (
                       <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                     ))}
