@@ -5,12 +5,6 @@ import { useSession } from '../context/SessionContext';
 import { useData } from '../context/DataContext';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,13 +22,13 @@ export function NavBar({ selectedLocationId, onLocationChange, showLocationSelec
   const { session, logout } = useSession();
   const { locations } = useData();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [staffMenuOpen, setStaffMenuOpen] = useState(false);
+  const [staffHover, setStaffHover] = useState(false);
+  const [userHover, setUserHover] = useState(false);
 
   const handleLogout = () => {
     logout();
     void navigate({ to: '/' });
-    setMenuOpen(false);
+    setUserHover(false);
   };
 
   const getRoleBadge = () => {
@@ -79,65 +73,106 @@ export function NavBar({ selectedLocationId, onLocationChange, showLocationSelec
 
         {/* Right side */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* Staff Login (shown when not logged in) */}
+          {/* Staff Login hover menu (shown when not logged in) */}
           {!session && (
-            <DropdownMenu open={staffMenuOpen} onOpenChange={setStaffMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 border-white/15 hover:bg-white/5 text-sm">
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Staff Login</span>
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={() => { void navigate({ to: '/login/admin' }); setStaffMenuOpen(false); }}>
-                  <Shield className="w-4 h-4 mr-2 text-amber-400" />
-                  Admin Login
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { void navigate({ to: '/login/moderator' }); setStaffMenuOpen(false); }}>
-                  <Shield className="w-4 h-4 mr-2 text-cyan-400" />
-                  Moderator Login
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div
+              role="menu"
+              aria-label="Staff login menu"
+              className="relative"
+              onMouseEnter={() => setStaffHover(true)}
+              onMouseLeave={() => setStaffHover(false)}
+            >
+              <Button variant="outline" size="sm" className="gap-2 border-white/15 hover:bg-white/5 text-sm">
+                <KeyRound className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Staff Login</span>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform duration-200 ${staffHover ? 'rotate-180' : ''}`} />
+              </Button>
+              {staffHover && (
+                <div
+                  className="absolute right-0 top-full pt-1 z-50"
+                >
+                  <div className="rounded-md border border-white/10 shadow-xl overflow-hidden"
+                    style={{ background: 'oklch(0.14 0.02 255 / 0.97)', backdropFilter: 'blur(16px)', minWidth: '11rem' }}>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-white/8 transition-colors text-left"
+                      onClick={() => { void navigate({ to: '/login/admin' }); setStaffHover(false); }}
+                    >
+                      <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+                      Admin Login
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-white/8 transition-colors text-left"
+                      onClick={() => { void navigate({ to: '/login/moderator' }); setStaffHover(false); }}
+                    >
+                      <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                      Moderator Login
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
-          {session ? (
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 hover:bg-white/5">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
-                    style={{ background: 'oklch(0.5 0.18 255 / 0.3)', color: 'oklch(0.72 0.16 195)' }}>
-                    {session.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden sm:block text-sm max-w-28 truncate">{session.name}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <div className="px-3 py-2 border-b border-border">
-                  <p className="text-sm font-medium truncate">{session.name}</p>
-                  <p className={`text-xs mt-0.5 ${getRoleBadge().color}`}>{getRoleBadge().label}</p>
+          {/* User hover menu (shown when logged in) */}
+          {session && (
+            <div
+              role="menu"
+              aria-label="User menu"
+              className="relative"
+              onMouseEnter={() => setUserHover(true)}
+              onMouseLeave={() => setUserHover(false)}
+            >
+              <Button variant="ghost" size="sm" className="gap-2 hover:bg-white/5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
+                  style={{ background: 'oklch(0.5 0.18 255 / 0.3)', color: 'oklch(0.72 0.16 195)' }}>
+                  {session.name.charAt(0).toUpperCase()}
                 </div>
-                {session.isAdmin && (
-                  <DropdownMenuItem onClick={() => { void navigate({ to: '/admin' }); setMenuOpen(false); }}>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Admin Panel
-                  </DropdownMenuItem>
-                )}
-                {session.isModerator && (
-                  <DropdownMenuItem onClick={() => { void navigate({ to: '/moderator' }); setMenuOpen(false); }}>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Moderator Panel
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
+                <span className="hidden sm:block text-sm max-w-28 truncate">{session.name}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${userHover ? 'rotate-180' : ''}`} />
+              </Button>
+              {userHover && (
+                <div className="absolute right-0 top-full pt-1 z-50">
+                  <div className="rounded-md border border-white/10 shadow-xl overflow-hidden"
+                    style={{ background: 'oklch(0.14 0.02 255 / 0.97)', backdropFilter: 'blur(16px)', minWidth: '13rem' }}>
+                    <div className="px-3 py-2.5 border-b border-white/10">
+                      <p className="text-sm font-medium truncate">{session.name}</p>
+                      <p className={`text-xs mt-0.5 ${getRoleBadge().color}`}>{getRoleBadge().label}</p>
+                    </div>
+                    {session.isAdmin && (
+                       <button
+                         type="button"
+                         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-white/8 transition-colors text-left"
+                         onClick={() => { void navigate({ to: '/admin' }); setUserHover(false); }}
+                       >
+                         <Shield className="w-4 h-4 shrink-0" />
+                         Admin Panel
+                       </button>
+                     )}
+                     {session.isModerator && (
+                       <button
+                         type="button"
+                         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-white/8 transition-colors text-left"
+                         onClick={() => { void navigate({ to: '/moderator' }); setUserHover(false); }}
+                       >
+                         <Shield className="w-4 h-4 shrink-0" />
+                         Moderator Panel
+                       </button>
+                     )}
+                     <button
+                       type="button"
+                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-400 hover:bg-white/8 transition-colors text-left"
+                       onClick={handleLogout}
+                     >
+                       <LogOut className="w-4 h-4 shrink-0" />
+                       Sign out
+                     </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </nav>

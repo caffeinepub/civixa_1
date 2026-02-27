@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { NavBar } from '../components/NavBar';
+import { BackgroundLayout } from '../components/BackgroundLayout';
 import { useData } from '../context/DataContext';
 import { useSession } from '../context/SessionContext';
 import { toast } from 'sonner';
@@ -38,7 +39,8 @@ export function Moderator() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(var(--background))' }}>
+    <BackgroundLayout>
+    <div className="min-h-screen">
       <NavBar />
 
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -131,6 +133,7 @@ export function Moderator() {
         </Tabs>
       </div>
     </div>
+    </BackgroundLayout>
   );
 }
 

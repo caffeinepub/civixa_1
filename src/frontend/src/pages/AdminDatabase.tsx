@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NavBar } from '../components/NavBar';
+import { BackgroundLayout } from '../components/BackgroundLayout';
 import { useData } from '../context/DataContext';
 import { toast } from 'sonner';
 
@@ -65,7 +66,8 @@ export function AdminDatabase() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(var(--background))' }}>
+    <BackgroundLayout>
+    <div className="min-h-screen">
       <NavBar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -261,6 +263,7 @@ export function AdminDatabase() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </BackgroundLayout>
   );
 }
 

@@ -106,11 +106,6 @@ export function LoginAdmin() {
               </Button>
             </div>
 
-            <div className="mt-4 p-3 rounded-lg text-xs text-muted-foreground"
-              style={{ background: 'oklch(0.5 0.18 255 / 0.06)', border: '1px solid oklch(0.5 0.18 255 / 0.15)' }}>
-              <strong className="text-foreground">Demo:</strong> Use <code className="font-mono text-cyan-400">admin@civixa.local</code> to login
-            </div>
-
             <p className="text-xs text-muted-foreground text-center mt-6">
               Are you a Moderator?{' '}
               <Link to="/login/moderator" className="text-cyan-400 hover:underline">

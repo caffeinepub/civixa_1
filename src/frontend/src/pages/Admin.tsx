@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Shield, Database, MapPin, Users, Wrench, ScrollText,
-  Plus, Trash2, ChevronRight, LayoutDashboard, Pencil, ChevronDown, UserPlus, FileEdit
+  Plus, Trash2, ChevronRight, LayoutDashboard, Pencil, UserPlus, FileEdit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { NavBar } from '../components/NavBar';
+import { BackgroundLayout } from '../components/BackgroundLayout';
 import { useData } from '../context/DataContext';
 import { useSession } from '../context/SessionContext';
 import { getUsers, setUsers, addAuditLog, generateId } from '../lib/storage';
@@ -68,9 +69,6 @@ export function Admin() {
   const [filterLocId, setFilterLocId] = useState('all');
 
   const [deleteSvcId, setDeleteSvcId] = useState<string | null>(null);
-  const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({});
-  const toggleLocExpand = (locId: string) =>
-    setExpandedLocs((prev) => ({ ...prev, [locId]: !prev[locId] }));
 
   // Status change with description dialog
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
@@ -217,7 +215,8 @@ export function Admin() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(var(--background))' }}>
+    <BackgroundLayout>
+    <div className="min-h-screen">
       <NavBar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -366,110 +365,101 @@ export function Admin() {
           {/* Services */}
           <TabsContent value="services">
             <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-              <h2 className="text-sm font-semibold">Services by Location</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-semibold">All Services ({filteredServices.length})</h2>
+                <Select value={filterLocId} onValueChange={setFilterLocId}>
+                  <SelectTrigger className="h-8 w-44 text-xs border-white/15 bg-white/5">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button size="sm" onClick={() => setAddSvcOpen(true)} className="gap-1.5"
                 style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}>
                 <Plus className="w-4 h-4" />Add Service
               </Button>
             </div>
 
-            <div className="space-y-3">
-              {locations.map((loc) => {
-                const locServices = services.filter((s) => s.locationId === loc.id);
-                const isExpanded = expandedLocs[loc.id] !== false; // default open
-                return (
-                  <div key={loc.id} className="glass-card-solid overflow-hidden">
-                    {/* Location header — clickable toggle */}
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/5 transition-colors"
-                      onClick={() => toggleLocExpand(loc.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" style={{ color: 'oklch(0.72 0.16 195)' }} />
-                        <span className="text-sm font-semibold">{loc.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({locServices.length} service{locServices.length !== 1 ? 's' : ''})
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-
-                    {/* Services list */}
-                    {isExpanded && (
-                      <div className="border-t border-white/10">
-                        {locServices.length === 0 ? (
-                          <p className="text-xs text-muted-foreground px-4 py-3">No services in this location.</p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="border-white/10">
-                                <TableHead className="text-xs pl-4">Service</TableHead>
-                                <TableHead className="text-xs">Impact</TableHead>
-                                <TableHead className="text-xs">Status</TableHead>
-                                <TableHead className="text-xs w-8" />
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {locServices.map((svc) => (
-                                <TableRow key={svc.id} className="border-white/5">
-                                  <TableCell className="pl-4">
-                                    <p className="font-medium text-sm">{svc.serviceName}</p>
-                                    {svc.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate">{svc.description}</p>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-muted-foreground max-w-40 truncate">{svc.impact}</TableCell>
-                                  <TableCell>
-                                    <Select
-                                      value={svc.status}
-                                      onValueChange={(val) =>
-                                        handleStatusSelect(svc, val as 'Operational' | 'Warning' | 'Interrupted')
-                                      }
-                                    >
-                                      <SelectTrigger
-                                        className={`h-7 w-36 text-xs border font-medium ${
-                                          svc.status === 'Operational'
-                                            ? 'status-operational'
-                                            : svc.status === 'Warning'
-                                            ? 'status-warning'
-                                            : 'status-interrupted'
-                                        }`}
-                                      >
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="Operational">Operational</SelectItem>
-                                        <SelectItem value="Warning">Warning</SelectItem>
-                                        <SelectItem value="Interrupted">Interrupted</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                  <TableCell className="text-right pr-3">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      onClick={() => setDeleteSvcId(svc.id)}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {locations.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No locations yet. Add one in the Locations tab.</p>
-              )}
+            <div className="glass-card-solid overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/10">
+                    <TableHead className="text-xs">Service Name</TableHead>
+                    <TableHead className="text-xs">Location</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Impact</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-xs w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredServices.map((svc) => {
+                    const locName = locations.find((l) => l.id === svc.locationId)?.name ?? '—';
+                    return (
+                      <TableRow key={svc.id} className="border-white/5">
+                        <TableCell className="font-medium text-sm">{svc.serviceName}</TableCell>
+                        <TableCell>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="w-3 h-3 inline-block shrink-0" style={{ color: 'oklch(0.72 0.16 195)' }} />
+                            {locName}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={svc.status}
+                            onValueChange={(val) =>
+                              handleStatusSelect(svc, val as 'Operational' | 'Warning' | 'Interrupted')
+                            }
+                          >
+                            <SelectTrigger
+                              className={`h-7 w-36 text-xs border font-medium ${
+                                svc.status === 'Operational'
+                                  ? 'status-operational'
+                                  : svc.status === 'Warning'
+                                  ? 'status-warning'
+                                  : 'status-interrupted'
+                              }`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Operational">Operational</SelectItem>
+                              <SelectItem value="Warning">Warning</SelectItem>
+                              <SelectItem value="Interrupted">Interrupted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">{svc.impact}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
+                          {svc.description ?? <span className="opacity-40">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right pr-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteSvcId(svc.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {filteredServices.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-8">
+                        {filterLocId !== 'all' ? 'No services in this location.' : 'No services yet. Add one using the button above.'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </TabsContent>
 
@@ -863,5 +853,6 @@ export function Admin() {
         </DialogContent>
       </Dialog>
     </div>
+    </BackgroundLayout>
   );
 }

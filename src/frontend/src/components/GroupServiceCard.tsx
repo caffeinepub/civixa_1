@@ -16,8 +16,14 @@ function aggregateStatus(services: CivixaService[]): ServiceStatus {
   return 'Operational';
 }
 
+const statusGlow: Record<string, string> = {
+  Operational: '0 0 0 1px oklch(0.68 0.18 145 / 0.45), 0 0 24px oklch(0.68 0.18 145 / 0.15)',
+  Warning: '0 0 0 1px oklch(0.72 0.18 60 / 0.45), 0 0 24px oklch(0.72 0.18 60 / 0.15)',
+  Interrupted: '0 0 0 1px oklch(0.62 0.22 25 / 0.55), 0 0 24px oklch(0.62 0.22 25 / 0.2)',
+};
+
 export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServiceCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const status = aggregateStatus(services);
 
   const iconColor = {
@@ -40,18 +46,46 @@ export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServ
     }[s]);
 
   return (
-    <div
-      className="glass-card p-5 animate-fade-in-up"
-      style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both', opacity: 0 }}
+    <article
+      className="glass-card animate-fade-in-up"
+      style={{
+        animationDelay: `${index * 0.05}s`,
+        animationFillMode: 'both',
+        opacity: 0,
+        padding: hovered ? '1.5rem' : '1.25rem',
+        boxShadow: hovered ? statusGlow[status] : 'none',
+        transform: hovered ? 'scale(1.025) translateY(-2px)' : 'scale(1) translateY(0)',
+        transition:
+          'padding 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease, border-color 0.3s ease',
+        zIndex: hovered ? 10 : 'auto',
+        position: 'relative',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}>
+          <div
+            className={`rounded-lg flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}
+            style={{
+              width: hovered ? '2.75rem' : '2.5rem',
+              height: hovered ? '2.75rem' : '2.5rem',
+              transition: 'width 0.3s ease, height 0.3s ease',
+            }}
+          >
             {icon}
           </div>
           <div>
-            <h3 className="font-semibold text-sm text-foreground leading-tight">{label}</h3>
+            <h3
+              className="font-semibold text-foreground leading-tight"
+              style={{
+                fontSize: hovered ? '0.9rem' : '0.875rem',
+                transition: 'font-size 0.3s ease',
+              }}
+            >
+              {label}
+            </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {services.length} provider{services.length !== 1 ? 's' : ''}
             </p>
@@ -59,21 +93,28 @@ export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServ
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StatusBadge status={status} size="sm" />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+          <StatusBadge status={status} size={hovered ? 'md' : 'sm'} />
+          <span
+            className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"
+            aria-hidden="true"
+            style={{ transition: 'transform 0.3s ease' }}
           >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+            {hovered ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
         </div>
       </div>
 
-      {/* Expanded list */}
-      {expanded && (
-        <div className="mt-4 border-t border-white/8 pt-3 space-y-3">
+      {/* Expanded list — slides in on hover */}
+      <div
+        style={{
+          overflow: 'hidden',
+          maxHeight: hovered ? `${services.length * 72}px` : '0px',
+          opacity: hovered ? 1 : 0,
+          transition: 'max-height 0.35s ease, opacity 0.25s ease',
+          marginTop: hovered ? '1rem' : '0',
+        }}
+      >
+        <div className="border-t border-white/8 pt-3 space-y-3">
           {services.map((svc) => (
             <div key={svc.id} className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -81,7 +122,7 @@ export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServ
                   {svc.serviceName}
                 </span>
                 {svc.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {svc.description}
                   </p>
                 )}
@@ -90,7 +131,7 @@ export function GroupServiceCard({ label, icon, services, index = 0 }: GroupServ
             </div>
           ))}
         </div>
-      )}
-    </div>
+      </div>
+    </article>
   );
 }
