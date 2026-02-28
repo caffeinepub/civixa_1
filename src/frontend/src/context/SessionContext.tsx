@@ -1,10 +1,17 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { CivixaSession } from '../types/civixa';
-import { getSession, setSession, clearSession, getUsers, setUsers } from '../lib/storage';
+import type React from "react";
+import { createContext, useCallback, useContext, useState } from "react";
+import {
+  clearSession,
+  getSession,
+  getUsers,
+  setSession,
+  setUsers,
+} from "../lib/storage";
+import type { CivixaSession } from "../types/civixa";
 
 interface SessionContextValue {
   session: CivixaSession | null;
-  login: (email: string, role: 'admin' | 'moderator') => boolean;
+  login: (email: string, role: "admin" | "moderator") => boolean;
   logout: () => void;
   updateSession: (updates: Partial<CivixaSession>) => void;
 }
@@ -12,25 +19,32 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSessionState] = useState<CivixaSession | null>(() => getSession());
+  const [session, setSessionState] = useState<CivixaSession | null>(() =>
+    getSession(),
+  );
 
-  const login = useCallback((email: string, role: 'admin' | 'moderator'): boolean => {
-    const users = getUsers();
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  const login = useCallback(
+    (email: string, role: "admin" | "moderator"): boolean => {
+      const users = getUsers();
+      const user = users.find(
+        (u) => u.email.toLowerCase() === email.toLowerCase(),
+      );
 
-    if (role === 'admin') {
-      if (!user?.isAdmin) return false;
-    } else if (role === 'moderator') {
-      if (!user?.isModerator) return false;
-    }
+      if (role === "admin") {
+        if (!user?.isAdmin) return false;
+      } else if (role === "moderator") {
+        if (!user?.isModerator) return false;
+      }
 
-    if (!user) return false;
+      if (!user) return false;
 
-    const sess: CivixaSession = { ...user };
-    setSession(sess);
-    setSessionState(sess);
-    return true;
-  }, []);
+      const sess: CivixaSession = { ...user };
+      setSession(sess);
+      setSessionState(sess);
+      return true;
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     clearSession();
@@ -63,6 +77,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
 export function useSession() {
   const ctx = useContext(SessionContext);
-  if (!ctx) throw new Error('useSession must be used within SessionProvider');
+  if (!ctx) throw new Error("useSession must be used within SessionProvider");
   return ctx;
 }

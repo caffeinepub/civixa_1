@@ -1,27 +1,27 @@
-import { useState, useEffect } from 'react';
-import { AlertTriangle, X, Send, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useData } from '../context/DataContext';
-import { useSession } from '../context/SessionContext';
-import { toast } from 'sonner';
-import { KEYS } from '../lib/storage';
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle, Clock, Send, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useData } from "../context/DataContext";
+import { useSession } from "../context/SessionContext";
+import { KEYS } from "../lib/storage";
 
 const COOLDOWN_SECONDS = 60;
 
@@ -31,15 +31,19 @@ interface ReportDialogProps {
   defaultLocationId?: string;
 }
 
-export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogProps) {
+export function ReportDialog({
+  open,
+  onClose,
+  defaultLocationId,
+}: ReportDialogProps) {
   const { locations, services, submitReport } = useData();
   const { session } = useSession();
 
-  const [locationId, setLocationId] = useState(defaultLocationId ?? '');
-  const [serviceId, setServiceId] = useState('');
-  const [area, setArea] = useState('');
-  const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState(session?.email ?? '');
+  const [locationId, setLocationId] = useState(defaultLocationId ?? "");
+  const [serviceId, setServiceId] = useState("");
+  const [area, setArea] = useState("");
+  const [description, setDescription] = useState("");
+  const [contactEmail, setContactEmail] = useState(session?.email ?? "");
   const [agreed, setAgreed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -51,7 +55,9 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
     if (!open) return;
     const lastTime = localStorage.getItem(KEYS.LAST_REPORT_TIME);
     if (lastTime) {
-      const elapsed = Math.floor((Date.now() - parseInt(lastTime, 10)) / 1000);
+      const elapsed = Math.floor(
+        (Date.now() - Number.parseInt(lastTime, 10)) / 1000,
+      );
       const remaining = COOLDOWN_SECONDS - elapsed;
       if (remaining > 0) setCooldown(remaining);
     }
@@ -68,22 +74,37 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
   }, [defaultLocationId]);
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail);
-  const canSubmit = locationId && serviceId && area.trim() && description.trim() && isEmailValid && agreed && cooldown === 0;
+  const canSubmit =
+    locationId &&
+    serviceId &&
+    area.trim() &&
+    description.trim() &&
+    isEmailValid &&
+    agreed &&
+    cooldown === 0;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
 
-    submitReport({ locationId, serviceId, area: area.trim(), description: description.trim(), contactEmail });
+    submitReport({
+      locationId,
+      serviceId,
+      area: area.trim(),
+      description: description.trim(),
+      contactEmail,
+    });
     localStorage.setItem(KEYS.LAST_REPORT_TIME, Date.now().toString());
     setCooldown(COOLDOWN_SECONDS);
 
-    toast.success('Report submitted — thank you! A moderator will review it shortly.');
+    toast.success(
+      "Report submitted — thank you! A moderator will review it shortly.",
+    );
     onClose();
     // Reset
-    setServiceId('');
-    setArea('');
-    setDescription('');
+    setServiceId("");
+    setArea("");
+    setDescription("");
     setAgreed(false);
     setSubmitting(false);
   };
@@ -100,22 +121,37 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
 
         <div className="space-y-4 mt-2">
           {/* Disclaimer */}
-          <div className="rounded-lg p-3 text-xs text-muted-foreground leading-relaxed"
-            style={{ background: 'oklch(0.72 0.18 60 / 0.08)', border: '1px solid oklch(0.72 0.18 60 / 0.2)' }}>
+          <div
+            className="rounded-lg p-3 text-xs text-muted-foreground leading-relaxed"
+            style={{
+              background: "oklch(0.72 0.18 60 / 0.08)",
+              border: "1px solid oklch(0.72 0.18 60 / 0.2)",
+            }}
+          >
             <AlertTriangle className="w-3.5 h-3.5 inline mr-1.5 align-text-top text-warning-status" />
-            This platform displays community-reported information. Reports are reviewed by moderators but are not officially verified by authorities.
+            This platform displays community-reported information. Reports are
+            reviewed by moderators but are not officially verified by
+            authorities.
           </div>
 
           {/* Location */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Location</Label>
-            <Select value={locationId} onValueChange={(v) => { setLocationId(v); setServiceId(''); }}>
+            <Select
+              value={locationId}
+              onValueChange={(v) => {
+                setLocationId(v);
+                setServiceId("");
+              }}
+            >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Select city…" />
               </SelectTrigger>
               <SelectContent>
                 {locations.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -124,13 +160,19 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
           {/* Service */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Affected Service</Label>
-            <Select value={serviceId} onValueChange={setServiceId} disabled={!locationId}>
+            <Select
+              value={serviceId}
+              onValueChange={setServiceId}
+              disabled={!locationId}
+            >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Select service…" />
               </SelectTrigger>
               <SelectContent>
                 {locationServices.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.serviceName}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.serviceName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -158,7 +200,9 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
               className="resize-none h-24 text-sm"
               maxLength={500}
             />
-            <p className="text-right text-xs text-muted-foreground">{description.length}/500</p>
+            <p className="text-right text-xs text-muted-foreground">
+              {description.length}/500
+            </p>
           </div>
 
           {/* Contact Email */}
@@ -172,7 +216,9 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
               className="h-9"
             />
             {contactEmail && !isEmailValid && (
-              <p className="text-xs text-destructive">Please enter a valid email address</p>
+              <p className="text-xs text-destructive">
+                Please enter a valid email address
+              </p>
             )}
           </div>
 
@@ -184,8 +230,12 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
               onCheckedChange={(v) => setAgreed(!!v)}
               className="mt-0.5"
             />
-            <Label htmlFor="agree-report" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-              I understand this is a community report and not official. I confirm the information is accurate to the best of my knowledge.
+            <Label
+              htmlFor="agree-report"
+              className="text-xs text-muted-foreground leading-relaxed cursor-pointer"
+            >
+              I understand this is a community report and not official. I
+              confirm the information is accurate to the best of my knowledge.
             </Label>
           </div>
 
@@ -207,10 +257,10 @@ export function ReportDialog({ open, onClose, defaultLocationId }: ReportDialogP
                 onClick={handleSubmit}
                 disabled={!canSubmit || submitting}
                 type="button"
-                style={{ background: 'oklch(0.5 0.18 255)', color: 'white' }}
+                style={{ background: "oklch(0.5 0.18 255)", color: "white" }}
               >
                 <Send className="w-4 h-4 mr-1.5" />
-                {submitting ? 'Submitting…' : 'Submit Report'}
+                {submitting ? "Submitting…" : "Submit Report"}
               </Button>
             </div>
           </div>

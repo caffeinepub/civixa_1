@@ -73,11 +73,16 @@
     @apply bg-background text-foreground;
     font-family: 'Space Grotesk', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-width: 320px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Force dark mode */
+  /* Force dark mode + responsive auto-zoom */
   html {
     color-scheme: dark;
+    font-size: clamp(13px, 1.4vw, 16px);
+    overflow-x: hidden;
   }
 }
 

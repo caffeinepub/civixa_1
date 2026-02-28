@@ -1,8 +1,8 @@
 // ─── CIVIXA Data Types ───────────────────────────────────────────────────────
 
-export type ServiceStatus = 'Operational' | 'Warning' | 'Interrupted';
+export type ServiceStatus = "Operational" | "Warning" | "Interrupted";
 
-export type ReportStatus = 'pending' | 'approved' | 'rejected';
+export type ReportStatus = "pending" | "approved" | "rejected";
 
 export interface CivixaLocation {
   id: string;

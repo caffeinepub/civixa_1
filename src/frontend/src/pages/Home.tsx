@@ -1,51 +1,85 @@
-import { useState, useEffect } from 'react';
-import { RefreshCw, MapPin, Activity, CheckCircle2, Building2, Wifi } from 'lucide-react';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { NavBar } from '../components/NavBar';
-import { ServiceCard } from '../components/ServiceCard';
-import { GroupServiceCard } from '../components/GroupServiceCard';
-import { BackgroundLayout } from '../components/BackgroundLayout';
-import { useData } from '../context/DataContext';
+} from "@/components/ui/select";
+import {
+  Activity,
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  MapPin,
+  RefreshCw,
+  Wifi,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { BackgroundLayout } from "../components/BackgroundLayout";
+import { GroupServiceCard } from "../components/GroupServiceCard";
+import { NavBar } from "../components/NavBar";
+import { ReportDialog } from "../components/ReportDialog";
+import { ServiceCard } from "../components/ServiceCard";
+import { useData } from "../context/DataContext";
 
 export function Home() {
   const { locations, services, refresh } = useData();
 
   const [selectedLocationId, setSelectedLocationId] = useState<string>(() => {
     const locs = locations;
-    return locs[0]?.id ?? '';
+    return locs[0]?.id ?? "";
   });
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [reportOpen, setReportOpen] = useState(false);
 
   const selectedLocation = locations.find((l) => l.id === selectedLocationId);
-  const locationServices = services.filter((s) => s.locationId === selectedLocationId);
+  const locationServices = services.filter(
+    (s) => s.locationId === selectedLocationId,
+  );
 
   // Bank keywords to group all bank services into a single card
-  const BANK_KEYWORDS = ['SBI', 'HDFC', 'ICICI', 'Axis Bank', 'Punjab National', 'Kotak', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'IndusInd'];
+  const BANK_KEYWORDS = [
+    "SBI",
+    "HDFC",
+    "ICICI",
+    "Axis Bank",
+    "Punjab National",
+    "Kotak",
+    "Bank of Baroda",
+    "Canara Bank",
+    "Union Bank",
+    "IndusInd",
+  ];
   // Top-5 ISP keywords in display order
-  const TOP_ISP_KEYWORDS = ['BSNL', 'Jio Fiber', 'Airtel', 'ACT', 'Hathway'];
+  const TOP_ISP_KEYWORDS = ["BSNL", "Jio Fiber", "Airtel", "ACT", "Hathway"];
 
   const bankServices = locationServices.filter((s) =>
-    BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw))
+    BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw)),
   );
 
   // Build ISP list ordered by TOP_ISP_KEYWORDS
-  const ispServices = TOP_ISP_KEYWORDS
-    .map((kw) => locationServices.find((s) => s.serviceName.startsWith('Internet –') && s.serviceName.includes(kw)))
-    .filter((s): s is NonNullable<typeof s> => s !== undefined);
+  const ispServices = TOP_ISP_KEYWORDS.map((kw) =>
+    locationServices.find(
+      (s) =>
+        s.serviceName.startsWith("Internet –") && s.serviceName.includes(kw),
+    ),
+  ).filter((s): s is NonNullable<typeof s> => s !== undefined);
 
   const otherServices = locationServices.filter(
-    (s) => !BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw)) && !s.serviceName.startsWith('Internet –')
+    (s) =>
+      !BANK_KEYWORDS.some((kw) => s.serviceName.includes(kw)) &&
+      !s.serviceName.startsWith("Internet –"),
   );
 
-  const operationalCount = locationServices.filter((s) => s.status === 'Operational').length;
-  const warningCount = locationServices.filter((s) => s.status === 'Warning').length;
-  const interruptedCount = locationServices.filter((s) => s.status === 'Interrupted').length;
+  const operationalCount = locationServices.filter(
+    (s) => s.status === "Operational",
+  ).length;
+  const warningCount = locationServices.filter(
+    (s) => s.status === "Warning",
+  ).length;
+  const interruptedCount = locationServices.filter(
+    (s) => s.status === "Interrupted",
+  ).length;
 
   // Auto-refresh every 10 seconds
   useEffect(() => {
@@ -61,8 +95,18 @@ export function Home() {
     setLastRefresh(new Date());
   };
 
-  const overallStatus = interruptedCount > 0 ? 'Interrupted' : warningCount > 0 ? 'Degraded' : 'All Systems Operational';
-  const overallStatusColor = interruptedCount > 0 ? 'text-interrupted' : warningCount > 0 ? 'text-warning-status' : 'text-operational';
+  const overallStatus =
+    interruptedCount > 0
+      ? "Interrupted"
+      : warningCount > 0
+        ? "Degraded"
+        : "All Systems Operational";
+  const overallStatusColor =
+    interruptedCount > 0
+      ? "text-interrupted"
+      : warningCount > 0
+        ? "text-warning-status"
+        : "text-operational";
 
   return (
     <BackgroundLayout>
@@ -75,9 +119,22 @@ export function Home() {
       <main className="max-w-7xl mx-auto px-4 pb-24">
         {/* Hero Section */}
         <section className="pt-16 pb-12 text-center">
-          <div className="animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'both', opacity: 0 }}>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
-              style={{ background: 'oklch(0.72 0.16 195 / 0.1)', border: '1px solid oklch(0.72 0.16 195 / 0.3)', color: 'oklch(0.72 0.16 195)' }}>
+          <div
+            className="animate-fade-in-up"
+            style={{
+              animationDelay: "0.1s",
+              animationFillMode: "both",
+              opacity: 0,
+            }}
+          >
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
+              style={{
+                background: "oklch(0.72 0.16 195 / 0.1)",
+                border: "1px solid oklch(0.72 0.16 195 / 0.3)",
+                color: "oklch(0.72 0.16 195)",
+              }}
+            >
               <Activity className="w-3 h-3" />
               Live Infrastructure Status
             </div>
@@ -86,11 +143,11 @@ export function Home() {
           <h1
             className="civixa-title text-5xl sm:text-7xl mb-4 animate-fade-in-up cyan-glow"
             style={{
-              animationDelay: '0.15s',
-              animationFillMode: 'both',
+              animationDelay: "0.15s",
+              animationFillMode: "both",
               opacity: 0,
-              color: 'oklch(0.72 0.16 195)',
-              letterSpacing: '-0.04em',
+              color: "oklch(0.72 0.16 195)",
+              letterSpacing: "-0.04em",
             }}
           >
             CIVIXA
@@ -98,7 +155,11 @@ export function Home() {
 
           <p
             className="text-lg text-muted-foreground max-w-md mx-auto animate-fade-in-up"
-            style={{ animationDelay: '0.2s', animationFillMode: 'both', opacity: 0 }}
+            style={{
+              animationDelay: "0.2s",
+              animationFillMode: "both",
+              opacity: 0,
+            }}
           >
             Real-time Civic Infrastructure Status
           </p>
@@ -106,14 +167,19 @@ export function Home() {
 
         {/* Location Selector (Mobile) */}
         <div className="sm:hidden mb-6">
-          <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+          <Select
+            value={selectedLocationId}
+            onValueChange={setSelectedLocationId}
+          >
             <SelectTrigger className="glass-card border-white/15">
               <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Select a city…" />
             </SelectTrigger>
             <SelectContent>
               {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -123,24 +189,44 @@ export function Home() {
         {selectedLocation && (
           <div
             className="mb-8 animate-fade-in-up"
-            style={{ animationDelay: '0.25s', animationFillMode: 'both', opacity: 0 }}
+            style={{
+              animationDelay: "0.25s",
+              animationFillMode: "both",
+              opacity: 0,
+            }}
           >
             <div className="glass-card p-5 mb-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <h2 className="text-xl font-semibold">{selectedLocation.name}</h2>
+                    <h2 className="text-xl font-semibold">
+                      {selectedLocation.name}
+                    </h2>
                   </div>
-                  <p className={`text-sm font-medium ${overallStatusColor}`}>{overallStatus}</p>
+                  <p className={`text-sm font-medium ${overallStatusColor}`}>
+                    {overallStatus}
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap">
-                  <Stat count={operationalCount} label="Operational" color="text-operational" />
+                  <Stat
+                    count={operationalCount}
+                    label="Operational"
+                    color="text-operational"
+                  />
                   <div className="w-px h-8 bg-white/10" />
-                  <Stat count={warningCount} label="Warning" color="text-warning-status" />
+                  <Stat
+                    count={warningCount}
+                    label="Warning"
+                    color="text-warning-status"
+                  />
                   <div className="w-px h-8 bg-white/10" />
-                  <Stat count={interruptedCount} label="Interrupted" color="text-interrupted" />
+                  <Stat
+                    count={interruptedCount}
+                    label="Interrupted"
+                    color="text-interrupted"
+                  />
                   <div className="w-px h-8 bg-white/10" />
 
                   <button
@@ -149,7 +235,23 @@ export function Home() {
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span className="font-mono">{lastRefresh.toLocaleTimeString()}</span>
+                    <span className="font-mono">
+                      {lastRefresh.toLocaleTimeString()}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                    style={{
+                      background: "oklch(0.55 0.18 30 / 0.15)",
+                      border: "1px solid oklch(0.55 0.18 30 / 0.4)",
+                      color: "oklch(0.75 0.18 30)",
+                    }}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Report Issue
                   </button>
                 </div>
               </div>
@@ -177,7 +279,9 @@ export function Home() {
                   label="Internet Services"
                   icon={<Wifi className="w-5 h-5" />}
                   services={ispServices}
-                  index={otherServices.length + (bankServices.length > 0 ? 1 : 0)}
+                  index={
+                    otherServices.length + (bankServices.length > 0 ? 1 : 0)
+                  }
                 />
               )}
             </div>
@@ -187,22 +291,37 @@ export function Home() {
         ) : (
           <EmptyState message="Select a city above to view infrastructure status." />
         )}
-
       </main>
 
       {/* Footer */}
       <footer className="py-6 border-t border-white/5 text-center text-xs text-muted-foreground">
-        <p>© 2026. Built with ♥ using{' '}
-          <a href="https://caffeine.ai" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+        <p>
+          © 2026. Built with ♥ using{" "}
+          <a
+            href="https://caffeine.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
             caffeine.ai
           </a>
         </p>
       </footer>
+
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        defaultLocationId={selectedLocationId}
+      />
     </BackgroundLayout>
   );
 }
 
-function Stat({ count, label, color }: { count: number; label: string; color: string }) {
+function Stat({
+  count,
+  label,
+  color,
+}: { count: number; label: string; color: string }) {
   return (
     <div className="text-center">
       <p className={`text-2xl font-bold font-mono ${color}`}>{count}</p>
